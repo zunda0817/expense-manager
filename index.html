@@ -1,0 +1,411 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>支出管理</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: sans-serif;
+      background: #f3f5f9;
+      color: #202938;
+    }
+
+    main {
+      max-width: 850px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .card, .panel {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px #0000000a;
+    }
+
+    .card p {
+      margin: 0 0 10px;
+      color: #667085;
+      font-size: 14px;
+    }
+
+    .card strong {
+      font-size: clamp(17px, 3vw, 24px);
+      overflow-wrap: anywhere;
+    }
+
+    .income {
+      color: #16804a;
+    }
+
+    .expense {
+      color: #d13e45;
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+    }
+
+    input, select, button {
+      font: inherit;
+      padding: 11px;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      min-width: 0;
+    }
+
+    button {
+      cursor: pointer;
+      background: #245fe8;
+      color: white;
+      border: none;
+    }
+
+    button:hover {
+      opacity: 0.88;
+    }
+
+    form button {
+      grid-column: 1 / -1;
+    }
+
+    .history {
+      margin-top: 24px;
+    }
+
+    .transaction {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-top: 1px solid #eaecf0;
+      padding: 14px 0;
+    }
+
+    .transaction p {
+      margin: 5px 0 0;
+      color: #667085;
+      font-size: 13px;
+    }
+
+    .transaction-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .delete {
+      background: #e9edf5;
+      color: #344054;
+      padding: 8px 10px;
+    }
+
+    #message {
+      min-height: 22px;
+      color: #d13e45;
+      font-size: 14px;
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 14px;
+      }
+
+      .summary {
+        gap: 7px;
+      }
+
+      .card, .panel {
+        padding: 12px;
+      }
+
+      form {
+        grid-template-columns: 1fr;
+      }
+
+      form button {
+        grid-column: auto;
+      }
+
+      .transaction {
+        align-items: flex-start;
+      }
+
+      .transaction-right {
+        align-items: flex-end;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>支出管理</h1>
+    <p>収入と支出を記録して、お金の流れを管理しよう。</p>
+
+    <section class="summary">
+      <div class="card">
+        <p>収入合計</p>
+        <strong id="totalIncome" class="income">¥0</strong>
+      </div>
+      <div class="card">
+        <p>支出合計</p>
+        <strong id="totalExpense" class="expense">¥0</strong>
+      </div>
+      <div class="card">
+        <p>差額</p>
+        <strong id="balance">¥0</strong>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>取引を登録</h2>
+      <form id="transactionForm">
+        <label>
+          種類
+          <select id="type">
+            <option value="expense">支出</option>
+            <option value="income">収入</option>
+          </select>
+        </label>
+
+        <label>
+          カテゴリー
+          <select id="category">
+            <option>食費</option>
+            <option>交通費</option>
+            <option>日用品</option>
+            <option>趣味</option>
+            <option>給料</option>
+            <option>その他</option>
+          </select>
+        </label>
+
+        <label>
+          内容
+          <input id="description" maxlength="100"
+                 placeholder="例：昼食" required>
+        </label>
+
+        <label>
+          金額（円）
+          <input id="amount" type="number"
+                 min="1" max="1000000000"
+                 step="1" placeholder="例：800" required>
+        </label>
+
+        <button type="submit">取引を登録</button>
+      </form>
+      <p id="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel history">
+      <h2>取引履歴</h2>
+      <div id="transactionList"></div>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "expense-manager-transactions";
+
+    const form = document.getElementById("transactionForm");
+    const typeInput = document.getElementById("type");
+    const categoryInput = document.getElementById("category");
+    const descriptionInput = document.getElementById("description");
+    const amountInput = document.getElementById("amount");
+    const message = document.getElementById("message");
+    const transactionList = document.getElementById("transactionList");
+
+    let transactions = loadTransactions();
+
+    function loadTransactions() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        const data = saved ? JSON.parse(saved) : [];
+
+        if (!Array.isArray(data)) return [];
+
+        return data.filter(item =>
+          item &&
+          typeof item.id === "string" &&
+          ["income", "expense"].includes(item.type) &&
+          typeof item.category === "string" &&
+          typeof item.description === "string" &&
+          Number.isSafeInteger(item.amount) &&
+          item.amount > 0 &&
+          item.amount <= 1000000000 &&
+          typeof item.date === "string"
+        );
+      } catch {
+        return [];
+      }
+    }
+
+    function saveTransactions() {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify(transactions)
+        );
+        return true;
+      } catch {
+        message.textContent =
+          "保存できませんでした。ブラウザの保存容量を確認してください。";
+        return false;
+      }
+    }
+
+    function yen(amount) {
+      return new Intl.NumberFormat("ja-JP", {
+        style: "currency",
+        currency: "JPY",
+        maximumFractionDigits: 0
+      }).format(amount);
+    }
+
+    function render() {
+      const income = transactions
+        .filter(item => item.type === "income")
+        .reduce((sum, item) => sum + item.amount, 0);
+
+      const expense = transactions
+        .filter(item => item.type === "expense")
+        .reduce((sum, item) => sum + item.amount, 0);
+
+      document.getElementById("totalIncome").textContent = yen(income);
+      document.getElementById("totalExpense").textContent = yen(expense);
+
+      const balanceElement = document.getElementById("balance");
+      balanceElement.textContent = yen(income - expense);
+      balanceElement.className = income >= expense ? "income" : "expense";
+
+      transactionList.replaceChildren();
+
+      if (transactions.length === 0) {
+        const empty = document.createElement("p");
+        empty.textContent = "取引はまだありません。";
+        transactionList.appendChild(empty);
+        return;
+      }
+
+      for (const item of [...transactions].reverse()) {
+        const row = document.createElement("div");
+        row.className = "transaction";
+
+        const info = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = item.description;
+
+        const detail = document.createElement("p");
+        detail.textContent = `${item.category} · ${item.date}`;
+
+        info.append(title, detail);
+
+        const right = document.createElement("div");
+        right.className = "transaction-right";
+
+        const amount = document.createElement("strong");
+        amount.className = item.type === "income" ? "income" : "expense";
+        amount.textContent =
+          `${item.type === "income" ? "+" : "-"}${yen(item.amount)}`;
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "delete";
+        deleteButton.textContent = "削除";
+        deleteButton.setAttribute(
+          "aria-label",
+          `${item.description}を削除`
+        );
+
+        deleteButton.addEventListener("click", () => {
+          const previous = transactions;
+          transactions = transactions.filter(
+            transaction => transaction.id !== item.id
+          );
+
+          if (saveTransactions()) {
+            message.textContent = "取引を削除しました。";
+            render();
+          } else {
+            transactions = previous;
+          }
+        });
+
+        right.append(amount, deleteButton);
+        row.append(info, right);
+        transactionList.appendChild(row);
+      }
+    }
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      message.textContent = "";
+
+      const description = descriptionInput.value.trim();
+      const amount = Number(amountInput.value);
+
+      if (!description) {
+        message.textContent = "内容を入力してください。";
+        return;
+      }
+
+      if (
+        !Number.isSafeInteger(amount) ||
+        amount < 1 ||
+        amount > 1000000000
+      ) {
+        message.textContent = "金額は1円以上の整数で入力してください。";
+        return;
+      }
+
+      const transaction = {
+        id: crypto.randomUUID(),
+        type: typeInput.value,
+        category: categoryInput.value,
+        description,
+        amount,
+        date: new Date().toLocaleDateString("ja-JP")
+      };
+
+      transactions.push(transaction);
+
+      if (!saveTransactions()) {
+        transactions.pop();
+        return;
+      }
+
+      form.reset();
+      message.textContent = "取引を登録しました。";
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
