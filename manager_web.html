@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>収入・支出管理</title>
+
+  <!-- CSS：画面のデザイン -->
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      max-width: 700px;
+      margin: 30px auto;
+      padding: 16px;
+      font-family: sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    section {
+      margin-bottom: 36px;
+    }
+
+    .page-nav {
+      display: flex;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .page-nav a {
+      flex: 1;
+      padding: 14px;
+      border-radius: 8px;
+      background: #e5e7eb;
+      color: #374151;
+      text-align: center;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .page-nav a[aria-current="page"] {
+      background: #2563eb;
+      color: white;
+    }
+
+    .page-nav a:focus-visible,
+    button:focus-visible {
+      outline: 3px solid #93c5fd;
+      outline-offset: 3px;
+    }
+
+    .form,
+    .summary {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 20px;
+      background: white;
+      border-radius: 12px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    input,
+    select,
+    button {
+      min-width: 0;
+      padding: 12px;
+      font-size: 16px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+    }
+
+    input:read-only {
+      background: #e5e7eb;
+    }
+
+    button {
+      border: none;
+      border-radius: 6px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+
+    .income-button {
+      background: #059669;
+    }
+
+    .delete-button {
+      flex-shrink: 0;
+      padding: 8px 12px;
+      background: #dc2626;
+      font-size: 14px;
+    }
+
+    .filter {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: 20px 0;
+    }
+
+    .filter input {
+      width: auto;
+      max-width: 100%;
+    }
+
+    ul {
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px;
+      margin: 8px 0;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .record-text {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .meta {
+      display: block;
+      margin: 5px 0;
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .message {
+      color: #6b7280;
+      line-height: 1.7;
+    }
+
+    .total {
+      margin: 8px 0;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .preview {
+      margin: 0;
+      color: #2563eb;
+      line-height: 1.7;
+    }
+
+    .expense-group {
+      margin: 20px 0;
+    }
+
+    .expense-group h3 {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #d1d5db;
+    }
+
+    .group-total {
+      color: #2563eb;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .page-nav {
+  flex-wrap: wrap;
+}
+
+.page-nav a {
+  min-width: 110px;
+}
+
+.job-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+.job-setting .delete-button {
+  align-self: flex-end;
+}
+
+  </style>
+</head>
+
+<body>
+  <!-- HTML：画面の構造 -->
+  <h1>収入・支出管理</h1>
+
+  <nav class="page-nav" aria-label="ページの切り替え">
+    <a id="expensePageLink" href="#expenses">支出管理</a>
+    <a id="incomePageLink" href="#incomes">収入管理</a>
+    <a id=""settingPageLink" href="#settings">収入設定</a>
+  </nav>
+
+  <!-- 支出ページ -->
+  <section id="expensePage">
+    <h2>支出の登録</h2>
+
+    <form id="expenseForm" class="form">
+      <label for="expenseItem">支出の内容</label>
+      <input
+        id="expenseItem"
+        type="text"
+        placeholder="例：パソコン"
+        required
+      >
+
+      <label for="expenseCategory">支払い方法</label>
+      <select id="expenseCategory">
+        <option value="カード">カード</option>
+        <option value="paypay">paypay</option>
+        <option value="paidy">paidy</option>
+        <option value="ローン">ローン</option>
+      </select>
+
+      <label for="expenseAmount">金額・購入総額（円）</label>
+      <input
+        id="expenseAmount"
+        type="number"
+        min="1"
+        step="1"
+        placeholder="例：10000"
+        required
+      >
+
+      <div id="singleFields" class="field-group">
+        <label for="expenseDate">日付</label>
+        <input id="expenseDate" type="date">
+      </div>
+
+      <div id="installmentFields" class="field-group" hidden>
+        <label for="purchaseMonth">購入月（初回の支払月）</label>
+        <input id="purchaseMonth" type="month">
+
+        <label for="paymentCount">支払回数</label>
+        <select id="paymentCount"></select>
+
+        <p class="message">
+          購入月から毎月支払うものとして計算します。
+          手数料・利息は含みません。端数は初月に加算します。
+        </p>
+
+        <p
+          id="paymentPreview"
+          class="preview"
+          aria-live="polite"
+        ></p>
+      </div>
+
+      <button type="submit">支出を追加</button>
+    </form>
+
+    <div class="filter">
+      <label for="expenseMonthFilter">支出を表示する月</label>
+      <input id="expenseMonthFilter" type="month">
+
+      <button id="showAllExpenses" type="button">
+        全期間を表示
+      </button>
+    </div>
+
+    <p class="message">
+      月を選ぶと、その月の支払額を表示します。
+      全期間では、将来の分割払いも含む登録総額を表示します。
+    </p>
+
+    <h2>支出一覧</h2>
+    <p id="expenseEmptyMessage" class="message"></p>
+    <div id="expenseList"></div>
+
+    <div class="summary">
+      <h2 id="expenseSummaryTitle">全期間の支出</h2>
+
+      <p class="total">
+        支出合計：<span id="expenseTotal">0</span>円
+      </p>
+    </div>
+  </section>
+
+ <!-- 収入ページ -->
+<section id="incomePage" hidden>
+  <h2>収入の登録</h2>
+
+  <p class="message">
+    職種と時給は「収入設定」ページで登録してください。
+  </p>
+
+  <form id="incomeForm" class="form">
+    <label for="incomeDate">出勤日・収入日</label>
+    <input id="incomeDate" type="date" required>
+
+    <label for="incomeSource">職種</label>
+    <select id="incomeSource" required></select>
+
+    <div id="workFields" class="field-group">
+      <label for="startTime">出勤時間</label>
+      <input id="startTime" type="time" step="60">
+
+      <label for="endTime">退勤時間</label>
+      <input id="endTime" type="time" step="60">
+
+      <label for="breakMinutes">休憩時間（分）</label>
+      <input
+        id="breakMinutes"
+        type="number"
+        min="0"
+        max="1439"
+        step="1"
+        value="0"
+      >
+
+      <div id="breakStartFields" class="field-group" hidden>
+        <label for="breakStart">休憩開始時刻</label>
+        <input id="breakStart" type="time" step="60">
+      </div>
+
+      <p class="message">
+        設定した時間帯ごとの時給で自動計算します。
+        退勤時間が出勤時間より早い場合は翌日として扱います。
+        休憩は1回の連続した時間として入力してください。
+      </p>
+      <p id="workPreview" class="preview" aria-live="polite"></p>
+    </div>
+
+    <label for="incomeAmount">収入金額（円）</label>
+    <input
+      id="incomeAmount"
+      type="number"
+      min="1"
+      step="1"
+      required
+    >
+
+    <button type="submit" class="income-button">
+      収入を追加
+    </button>
+  </form>
+
+  <div class="filter">
+    <label for="incomeMonthFilter">収入を表示する月</label>
+    <input id="incomeMonthFilter" type="month">
+
+    <button id="showAllIncomes" type="button">
+      全期間を表示
+    </button>
+  </div>
+
+  <h2>収入一覧</h2>
+  <p id="incomeEmptyMessage" class="message"></p>
+  <ul id="incomeList"></ul>
+
+  <div class="summary">
+    <h2 id="incomeSummaryTitle">全期間の収入</h2>
+    <p class="total">
+      収入合計：<span id="incomeTotal">0</span>円
+    </p>
+  </div>
+</section>
+
+<!-- 収入設定ページ -->
+<section id="settingsPage" hidden>
+  <h2>収入設定</h2>
+
+  <p class="message">
+    職種ごとに、時給項目を追加・削除できます。
+    各項目の名前・時給・適用開始時刻・適用終了時刻を入力してください。
+    時間帯は重複や空きがないように設定します。
+    開始と終了が同じ時刻の場合は24時間適用します。
+  </p>
+
+
+  <form id="jobSettingsForm" class="form">
+    <div id="jobSettingsList"></div>
+
+    <button id="addJobButton" type="button">
+      職種を追加
+    </button>
+
+    <button type="submit">設定をまとめて保存</button>
+  </form>
+
+  <p id="settingsMessage" class="message" aria-live="polite"></p>
+
+  <p class="message">
+    設定の変更は、これから登録する収入に適用されます。
+    登録済みの収入金額は変わりません。
+  </p>
+</section>
+
+  <!-- JavaScript：計算・保存・画面操作 -->
+  <script>
+    // ===== 共通の処理 =====
+
+    function getElement(id) {
+      return document.getElementById(id);
+    }
+
+    function getToday() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
+    }
+
+    function isValidMonth(value) {
+      return typeof value === "string" &&
+        /^\d{4}-(0[1-9]|1[0-2])$/.test(value) &&
+        Number(value.slice(0, 4)) >= 1;
+    }
+
+    function isValidDate(value) {
+      if (
+        typeof value !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+        !isValidMonth(value.slice(0, 7))
+      ) {
+        return false;
+      }
+
+      const date = new Date(value + "T00:00:00");
+
+      return !Number.isNaN(date.getTime()) &&
+        date.getFullYear() === Number(value.slice(0, 4)) &&
+        date.getMonth() + 1 === Number(value.slice(5, 7)) &&
+        date.getDate() === Number(value.slice(8, 10));
+    }
+
+    function isPositiveInteger(value) {
+      return Number.isSafeInteger(value) && value > 0;
+    }
+
+    function formatYen(amount) {
+      return amount.toLocaleString("ja-JP") + "円";
+    }
+
+    function monthLabel(month) {
+      return month.replace("-", "年") + "月";
+    }
+
+    // 指定した月数を加える
+    function addMonths(month, offset) {
+      const year = Number(month.slice(0, 4));
+      const monthIndex = Number(month.slice(5, 7)) - 1;
+      const totalMonths = year * 12 + monthIndex + offset;
+
+      const nextYear = Math.floor(totalMonths / 12);
+      const nextMonth = totalMonths % 12 + 1;
+
+      return String(nextYear).padStart(4, "0") +
+        "-" + String(nextMonth).padStart(2, "0");
+    }
+
+    function createMeta(text) {
+      const element = document.createElement("span");
+      element.className = "meta";
+      element.textContent = text;
+      return element;
+    }
+
+    function createDeleteButton(handler) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "delete-button";
+      button.textContent = "削除";
+      button.addEventListener("click", handler);
+      return button;
+    }
+
+    // ===== 支出の管理 =====
+
+    const expenseForm = getElement("expenseForm");
+    const expenseItem = getElement("expenseItem");
+    const expenseCategory = getElement("expenseCategory");
+    const expenseAmount = getElement("expenseAmount");
+    const expenseDate = getElement("expenseDate");
+
+    const singleFields = getElement("singleFields");
+    const installmentFields = getElement("installmentFields");
+    const purchaseMonth = getElement("purchaseMonth");
+    const paymentCount = getElement("paymentCount");
+    const paymentPreview = getElement("paymentPreview");
+
+    const expenseMonthFilter = getElement("expenseMonthFilter");
+    const expenseList = getElement("expenseList");
+    const expenseTotal = getElement("expenseTotal");
+    const expenseSummaryTitle = getElement("expenseSummaryTitle");
+    const expenseEmptyMessage = getElement("expenseEmptyMessage");
+
+    const EXPENSE_KEY = "expense-manager-expenses";
+    const expenseCategories = ["カード", "paypay", "paidy", "ローン"];
+
+    let expenses = [];
+    let expenseStorageReadable = true;
+
+    expenseDate.value = getToday();
+    purchaseMonth.value = getToday().slice(0, 7);
+
+    // 1～120回の選択肢を作る
+    for (let count = 1; count <= 120; count++) {
+      const option = document.createElement("option");
+      option.value = count;
+      option.textContent = count + "回";
+      paymentCount.appendChild(option);
+    }
+
+    paymentCount.value = "3";
+
+    function isInstallment(category) {
+      return category === "paidy" || category === "ローン";
+    }
+
+    // 端数は初月に加える
+    function getInstallmentAmount(amount, count, index) {
+      const base = Math.floor(amount / count);
+      const remainder = amount % count;
+
+      return base + (index === 0 ? remainder : 0);
+    }
+
+    function updatePaymentPreview() {
+      paymentPreview.textContent = "";
+
+      if (!isInstallment(expenseCategory.value)) {
+        return;
+      }
+
+      const amount = Number(expenseAmount.value);
+      const count = Number(paymentCount.value);
+      const month = purchaseMonth.value;
+
+      if (
+        !isPositiveInteger(amount) ||
+        !Number.isInteger(count) ||
+        count < 1 ||
+        count > 120 ||
+        !isValidMonth(month)
+      ) {
+        return;
+      }
+
+      if (amount < count) {
+        paymentPreview.textContent =
+          "各回が1円以上になるよう、支払回数を減らしてください。";
+        return;
+      }
+
+      const lastMonth = addMonths(month, count - 1);
+
+      if (!isValidMonth(lastMonth)) {
+        paymentPreview.textContent = "支払終了月が範囲外です。";
+        return;
+      }
+
+      const first = getInstallmentAmount(amount, count, 0);
+      const base = Math.floor(amount / count);
+
+      paymentPreview.textContent =
+        monthLabel(month) + "～" + monthLabel(lastMonth) +
+        " ／ 初月 " + formatYen(first) +
+        (count > 1 ? "、2回目以降 " + formatYen(base) : "");
+    }
+
+    function updateExpenseFields() {
+      const installment = isInstallment(expenseCategory.value);
+
+      singleFields.hidden = installment;
+      installmentFields.hidden = !installment;
+
+      expenseDate.required = !installment;
+      expenseDate.disabled = installment;
+
+      purchaseMonth.required = installment;
+      purchaseMonth.disabled = !installment;
+
+      paymentCount.required = installment;
+      paymentCount.disabled = !installment;
+
+      updatePaymentPreview();
+    }
+
+    // 保存した支出を読み込む
+    try {
+      const saved = localStorage.getItem(EXPENSE_KEY);
+
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+
+        if (!Array.isArray(parsed)) {
+          throw new Error("支出データが配列ではありません。");
+        }
+
+        expenses = parsed.map(function (expense) {
+          if (
+            expense === null ||
+            typeof expense !== "object" ||
+            typeof expense.item !== "string" ||
+            expense.item.trim() === "" ||
+            !isPositiveInteger(expense.amount)
+          ) {
+            throw new Error("支出データの内容が正しくありません。");
+          }
+
+          // 過去データで支払い方法がないものは未設定にする
+          const category = expenseCategories.includes(expense.category)
+            ? expense.category
+            : "未設定";
+
+          if (isInstallment(category)) {
+            const count = expense.paymentCount;
+            const month = expense.purchaseMonth;
+
+            if (
+              !isValidMonth(month) ||
+              !Number.isInteger(count) ||
+              count < 1 ||
+              count > 120 ||
+              expense.amount < count ||
+              !isValidMonth(addMonths(month, count - 1))
+            ) {
+              throw new Error("分割払いの保存内容が正しくありません。");
+            }
+
+            return {
+              item: expense.item,
+              amount: expense.amount,
+              category: category,
+              purchaseMonth: month,
+              paymentCount: count
+            };
+          }
+
+          return {
+            item: expense.item,
+            amount: expense.amount,
+            category: category,
+            date: isValidDate(expense.date) ? expense.date : ""
+          };
+        });
+      }
+    } catch (error) {
+      expenseStorageReadable = false;
+      expenses = [];
+      console.error(error);
+
+      alert(
+        "支出を読み込めませんでした。" +
+        "既存データを保護するため、支出の保存を停止します。"
+      );
+    }
+
+    function saveExpenses() {
+      if (!expenseStorageReadable) {
+        alert(
+          "読み込みに失敗しているため、支出の変更は保存されません。"
+        );
+        return;
+      }
+
+      try {
+        localStorage.setItem(
+          EXPENSE_KEY,
+          JSON.stringify(expenses)
+        );
+      } catch (error) {
+        console.error(error);
+
+        alert(
+          "支出を保存できませんでした。" +
+          "今回の変更は画面上だけに反映されています。"
+        );
+      }
+    }
+
+    // 指定月の支払額を取得する
+    function getMonthlyPayment(expense, selectedMonth) {
+      if (!isInstallment(expense.category)) {
+        if (expense.date.slice(0, 7) !== selectedMonth) {
+          return null;
+        }
+
+        return {
+          amount: expense.amount,
+          number: 1
+        };
+      }
+
+      for (let index = 0; index < expense.paymentCount; index++) {
+        const month = addMonths(expense.purchaseMonth, index);
+
+        if (month === selectedMonth) {
+          return {
+            amount: getInstallmentAmount(
+              expense.amount,
+              expense.paymentCount,
+              index
+            ),
+            number: index + 1
+          };
+        }
+      }
+
+      return null;
+    }
+
+    // 支払い方法ごとに一覧を表示する
+    function renderExpenses() {
+      expenseList.textContent = "";
+
+      const selectedMonth = expenseMonthFilter.value;
+      const groups = {};
+
+      expenseCategories.forEach(function (category) {
+        groups[category] = [];
+      });
+
+      let total = 0;
+      let visibleCount = 0;
+
+      expenses.forEach(function (expense, originalIndex) {
+        let displayedAmount = expense.amount;
+        let payment = null;
+
+        if (selectedMonth !== "") {
+          payment = getMonthlyPayment(expense, selectedMonth);
+
+          if (payment === null) {
+            return;
+          }
+
+          displayedAmount = payment.amount;
+        }
+
+        if (!groups[expense.category]) {
+          groups[expense.category] = [];
+        }
+
+        groups[expense.category].push({
+          expense: expense,
+          originalIndex: originalIndex,
+          displayedAmount: displayedAmount,
+          payment: payment
+        });
+
+        total += displayedAmount;
+        visibleCount++;
+      });
+
+      const displayCategories = [...expenseCategories];
+
+      if (groups["未設定"] && groups["未設定"].length > 0) {
+        displayCategories.push("未設定");
+      }
+
+      displayCategories.forEach(function (category) {
+        const records = groups[category];
+
+        const group = document.createElement("div");
+        group.className = "expense-group";
+
+        let groupTotal = 0;
+
+        records.forEach(function (record) {
+          groupTotal += record.displayedAmount;
+        });
+
+        const heading = document.createElement("h3");
+
+        const categoryName = document.createElement("span");
+        categoryName.textContent = category;
+
+        const subtotal = document.createElement("span");
+        subtotal.className = "group-total";
+        subtotal.textContent = formatYen(groupTotal);
+
+        heading.appendChild(categoryName);
+        heading.appendChild(subtotal);
+        group.appendChild(heading);
+
+        if (records.length === 0) {
+          const message = document.createElement("p");
+          message.className = "message";
+          message.textContent = "支出はありません。";
+          group.appendChild(message);
+        } else {
+          const list = document.createElement("ul");
+
+          records.forEach(function (record) {
+            const expense = record.expense;
+
+            const listItem = document.createElement("li");
+            const text = document.createElement("div");
+            text.className = "record-text";
+
+            const detail = document.createElement("span");
+            detail.textContent =
+              expense.item + "：" +
+              formatYen(record.displayedAmount);
+
+            text.appendChild(detail);
+
+            if (isInstallment(expense.category)) {
+              if (selectedMonth !== "") {
+                text.appendChild(createMeta(
+                  record.payment.number + " / " +
+                  expense.paymentCount + "回目" +
+                  " ／ 購入総額 " + formatYen(expense.amount)
+                ));
+              } else {
+                const lastMonth = addMonths(
+                  expense.purchaseMonth,
+                  expense.paymentCount - 1
+                );
+
+                text.appendChild(createMeta(
+                  monthLabel(expense.purchaseMonth) + "～" +
+                  monthLabel(lastMonth) +
+                  " ／ " + expense.paymentCount + "回払い"
+                ));
+              }
+            } else {
+              text.appendChild(
+                createMeta(expense.date || "日付未設定")
+              );
+            }
+
+            const deleteButton = createDeleteButton(function () {
+              if (
+                isInstallment(expense.category) &&
+                !confirm(
+                  "この購入の全" + expense.paymentCount +
+                  "回分の支払予定を削除しますか？"
+                )
+              ) {
+                return;
+              }
+
+              expenses.splice(record.originalIndex, 1);
+              saveExpenses();
+              renderExpenses();
+            });
+
+            listItem.appendChild(text);
+            listItem.appendChild(deleteButton);
+            list.appendChild(listItem);
+          });
+
+          group.appendChild(list);
+        }
+
+        expenseList.appendChild(group);
+      });
+
+      expenseTotal.textContent = total.toLocaleString("ja-JP");
+
+      expenseSummaryTitle.textContent = selectedMonth
+        ? monthLabel(selectedMonth) + "の支出"
+        : "全期間の支出（将来の支払いを含む）";
+
+      expenseEmptyMessage.textContent = visibleCount === 0
+        ? "表示する支出がありません。"
+        : "";
+    }
+
+    // 支出を追加する
+    expenseForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      const item = expenseItem.value.trim();
+      const category = expenseCategory.value;
+      const amount = Number(expenseAmount.value);
+
+      if (
+        item === "" ||
+        !expenseCategories.includes(category) ||
+        !isPositiveInteger(amount)
+      ) {
+        alert(
+          "内容・支払い方法と、1円以上の整数金額を入力してください。"
+        );
+        return;
+      }
+
+      let expense;
+
+      if (isInstallment(category)) {
+        const month = purchaseMonth.value;
+        const count = Number(paymentCount.value);
+
+        if (
+          !isValidMonth(month) ||
+          !Number.isInteger(count) ||
+          count < 1 ||
+          count > 120 ||
+          amount < count ||
+          !isValidMonth(addMonths(month, count - 1))
+        ) {
+          alert(
+            "購入月と支払回数を確認してください。" +
+            "各回の支払額は1円以上にしてください。"
+          );
+          return;
+        }
+
+        expense = {
+          item: item,
+          category: category,
+          amount: amount,
+          purchaseMonth: month,
+          paymentCount: count
+        };
+
+        if (expenseMonthFilter.value !== "") {
+          expenseMonthFilter.value = month;
+        }
+      } else {
+        if (!isValidDate(expenseDate.value)) {
+          alert("日付を入力してください。");
+          return;
+        }
+
+        expense = {
+          item: item,
+          category: category,
+          amount: amount,
+          date: expenseDate.value
+        };
+
+        if (expenseMonthFilter.value !== "") {
+          expenseMonthFilter.value = expenseDate.value.slice(0, 7);
+        }
+      }
+
+      expenses.push(expense);
+      saveExpenses();
+      renderExpenses();
+
+      expenseItem.value = "";
+      expenseAmount.value = "";
+      updatePaymentPreview();
+      expenseItem.focus();
+    });
+
+    expenseCategory.addEventListener(
+      "change",
+      updateExpenseFields
+    );
+
+    expenseAmount.addEventListener(
+      "input",
+      updatePaymentPreview
+    );
+
+    purchaseMonth.addEventListener(
+      "input",
+      updatePaymentPreview
+    );
+
+    paymentCount.addEventListener(
+      "change",
+      updatePaymentPreview
+    );
+
+    expenseMonthFilter.addEventListener(
+      "change",
+      renderExpenses
+    );
+
+    getElement("showAllExpenses").addEventListener(
+      "click",
+      function () {
+        expenseMonthFilter.value = "";
+        renderExpenses();
+      }
+    );
+
+  // ===== 収入設定・収入管理 =====
+
+// ===== 収入設定・収入管理 =====
+
+const JOBS_KEY = "expense-manager-job-settings";
+const INCOME_KEY = "expense-manager-incomes";
+
+function makeId() {
+  return "id-" + Date.now() + "-" +
+    Math.random().toString(36).slice(2);
+}
+
+function defaultRates() {
+  return [
+    {
+      name: "通常",
+      amount: "",
+      start: "05:00",
+      end: "22:00"
+    },
+    {
+      name: "深夜",
+      amount: "",
+      start: "22:00",
+      end: "05:00"
+    }
+  ];
+}
+
+let jobs = [
+  {
+    id: "job-shozemi",
+    name: "湘ゼミ",
+    rates: defaultRates()
+  },
+  {
+    id: "job-cinecitta",
+    name: "チネチッタ",
+    rates: defaultRates()
+  }
+];
+
+let incomes = [];
+let jobsReadable = true;
+let incomesReadable = true;
+
+const incomeForm = getElement("incomeForm");
+const incomeDate = getElement("incomeDate");
+const incomeSource = getElement("incomeSource");
+const workFields = getElement("workFields");
+const startTime = getElement("startTime");
+const endTime = getElement("endTime");
+const breakMinutes = getElement("breakMinutes");
+const breakStart = getElement("breakStart");
+const breakStartFields = getElement("breakStartFields");
+const workPreview = getElement("workPreview");
+const incomeAmount = getElement("incomeAmount");
+
+const incomeMonthFilter = getElement("incomeMonthFilter");
+const incomeList = getElement("incomeList");
+const incomeTotal = getElement("incomeTotal");
+const incomeSummaryTitle = getElement("incomeSummaryTitle");
+const incomeEmptyMessage = getElement("incomeEmptyMessage");
+
+const jobSettingsForm = getElement("jobSettingsForm");
+const jobSettingsList = getElement("jobSettingsList");
+const settingsMessage = getElement("settingsMessage");
+
+incomeDate.value = getToday();
+
+// ===== 時間帯の判定 =====
+
+function timeToMinutes(value) {
+  if (
+    typeof value !== "string" ||
+    !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)
+  ) {
+    return null;
+  }
+
+  const parts = value.split(":").map(Number);
+  return parts[0] * 60 + parts[1];
+}
+
+function formatMinutes(minutes) {
+  return Math.floor(minutes / 60) + "時間" +
+    minutes % 60 + "分";
+}
+
+// 開始は含み、終了は含まない
+function isInRate(minute, rate) {
+  const start = timeToMinutes(rate.start);
+  const end = timeToMinutes(rate.end);
+
+  if (start === end) {
+    return true;
+  }
+
+  if (start < end) {
+    return minute >= start && minute < end;
+  }
+
+  // 日付をまたぐ時間帯
+  return minute >= start || minute < end;
+}
+
+// 時給設定を確認する
+function validateRates(rates) {
+  if (!Array.isArray(rates) || rates.length === 0) {
+    throw new Error("時給項目を1つ以上登録してください。");
+  }
+
+  const names = new Set();
+
+  rates.forEach(function (rate) {
+    if (
+      !rate ||
+      typeof rate.name !== "string" ||
+      rate.name.trim() === "" ||
+      names.has(rate.name.trim()) ||
+      !isPositiveInteger(rate.amount) ||
+      timeToMinutes(rate.start) === null ||
+      timeToMinutes(rate.end) === null
+    ) {
+      throw new Error(
+        "時給項目の名前・1円以上の整数時給・開始終了時刻を確認してください。" +
+        "同じ職種内で項目名は重複できません。"
+      );
+    }
+
+    names.add(rate.name.trim());
+  });
+
+  for (let minute = 0; minute < 1440; minute++) {
+    const matches = rates.filter(function (rate) {
+      return isInRate(minute, rate);
+    });
+
+    if (matches.length !== 1) {
+      const hour = String(Math.floor(minute / 60)).padStart(2, "0");
+      const min = String(minute % 60).padStart(2, "0");
+
+      throw new Error(
+        hour + ":" + min + "の時間帯に" +
+        (matches.length === 0 ? "空きがあります。" : "重複があります。")
+      );
+    }
+  }
+}
+
+// ===== 保存データの読み込み =====
+
+try {
+  const saved = localStorage.getItem(JOBS_KEY);
+
+  if (saved !== null) {
+    const parsed = JSON.parse(saved);
+
+    if (!Array.isArray(parsed)) {
+      throw new Error("職種設定の形式が正しくありません。");
+    }
+
+    const ids = new Set();
+    const names = new Set();
+
+    jobs = parsed.map(function (job) {
+      if (
+        !job ||
+        typeof job.id !== "string" ||
+        job.id === "" ||
+        job.id === "other" ||
+        typeof job.name !== "string" ||
+        job.name.trim() === "" ||
+        job.name.trim() === "その他" ||
+        ids.has(job.id) ||
+        names.has(job.name.trim())
+      ) {
+        throw new Error("職種設定の内容が正しくありません。");
+      }
+
+      ids.add(job.id);
+      names.add(job.name.trim());
+
+      // 前回の通常時給・深夜時給設定を新形式に変換する
+      const rates = Array.isArray(job.rates)
+        ? job.rates
+        : [
+            {
+              name: "通常",
+              amount: job.hourlyRate,
+              start: "05:00",
+              end: "22:00"
+            },
+            {
+              name: "深夜",
+              amount: job.nightRate,
+              start: "22:00",
+              end: "05:00"
+            }
+          ];
+
+      validateRates(rates);
+
+      return {
+        id: job.id,
+        name: job.name.trim(),
+        rates: rates
+      };
+    });
+  }
+} catch (error) {
+  jobsReadable = false;
+  console.error(error);
+  alert(
+    "職種設定を読み込めませんでした。" +
+    "既存設定の上書きを停止します。"
+  );
+}
+
+try {
+  const saved = localStorage.getItem(INCOME_KEY);
+
+  if (saved !== null) {
+    const parsed = JSON.parse(saved);
+
+    if (
+      !Array.isArray(parsed) ||
+      !parsed.every(function (income) {
+        return income &&
+          typeof income.source === "string" &&
+          isValidDate(income.date) &&
+          isPositiveInteger(income.amount);
+      })
+    ) {
+      throw new Error("収入データの形式が正しくありません。");
+    }
+
+    incomes = parsed;
+  }
+} catch (error) {
+  incomesReadable = false;
+  console.error(error);
+  alert(
+    "収入を読み込めませんでした。" +
+    "既存データの上書きを停止します。"
+  );
+}
+
+// ===== 設定画面 =====
+
+// ラベル付き入力欄を作る
+function appendSettingInput(parent, labelText, field, type, value) {
+  const id = makeId();
+
+  const label = document.createElement("label");
+  label.htmlFor = id;
+  label.textContent = labelText;
+
+  const input = document.createElement("input");
+  input.id = id;
+  input.type = type;
+  input.dataset.field = field;
+  input.value = value;
+  input.required = true;
+
+  if (type === "number") {
+    input.min = "1";
+    input.step = "1";
+  }
+
+  if (type === "time") {
+    input.step = "60";
+  }
+
+  parent.appendChild(label);
+  parent.appendChild(input);
+
+  return input;
+}
+
+function showUnsavedMessage() {
+  settingsMessage.textContent =
+    "変更を反映するには「設定をまとめて保存」を押してください。";
+}
+
+// 時給項目を1つ作る
+function addRateRow(container, rate) {
+  const row = document.createElement("div");
+  row.className = "job-setting";
+  row.dataset.rateRow = "true";
+
+  appendSettingInput(
+    row, "時給項目名", "rateName", "text", rate.name
+  );
+
+  appendSettingInput(
+    row, "時給（円）", "rateAmount", "number", rate.amount
+  );
+
+  appendSettingInput(
+    row, "適用開始時刻", "rateStart", "time", rate.start
+  );
+
+  appendSettingInput(
+    row, "適用終了時刻", "rateEnd", "time", rate.end
+  );
+
+  const removeButton = createDeleteButton(function () {
+    row.remove();
+    showUnsavedMessage();
+  });
+
+  removeButton.textContent = "この時給項目を削除";
+  row.appendChild(removeButton);
+  container.appendChild(row);
+}
+
+// 職種の設定欄を作る
+function addJobSettingRow(job) {
+  const row = document.createElement("div");
+  row.className = "job-setting";
+  row.dataset.jobId = job.id;
+
+  appendSettingInput(
+    row, "職種名", "jobName", "text", job.name
+  );
+
+  const title = document.createElement("h3");
+  title.textContent = "時給の項目";
+  row.appendChild(title);
+
+  const ratesContainer = document.createElement("div");
+  ratesContainer.dataset.ratesContainer = "true";
+  row.appendChild(ratesContainer);
+
+  job.rates.forEach(function (rate) {
+    addRateRow(ratesContainer, rate);
+  });
+
+  const addRateButton = document.createElement("button");
+  addRateButton.type = "button";
+  addRateButton.textContent = "時給項目を追加";
+
+  addRateButton.addEventListener("click", function () {
+    addRateRow(ratesContainer, {
+      name: "",
+      amount: "",
+      start: "09:00",
+      end: "18:00"
+    });
+
+    showUnsavedMessage();
+  });
+
+  row.appendChild(addRateButton);
+
+  const removeJobButton = createDeleteButton(function () {
+    row.remove();
+    showUnsavedMessage();
+  });
+
+  removeJobButton.textContent = "この職種を削除";
+  row.appendChild(removeJobButton);
+
+  jobSettingsList.appendChild(row);
+}
+
+function renderJobSettings() {
+  jobSettingsList.textContent = "";
+
+  jobs.forEach(function (job) {
+    addJobSettingRow(job);
+  });
+}
+
+getElement("addJobButton").addEventListener("click", function () {
+  addJobSettingRow({
+    id: makeId(),
+    name: "",
+    rates: defaultRates()
+  });
+
+  showUnsavedMessage();
+});
+
+jobSettingsForm.addEventListener("input", showUnsavedMessage);
+
+jobSettingsForm.addEventListener("submit", function (event) {
+  event.preventDefault();
+
+  if (!jobsReadable) {
+    alert("設定の読み込みに失敗しているため、上書きできません。");
+    return;
+  }
+
+  try {
+    const nextJobs = [];
+    const names = new Set();
+
+    for (const row of jobSettingsList.children) {
+      const name = row.querySelector(
+        '[data-field="jobName"]'
+      ).value.trim();
+
+      if (
+        name === "" ||
+        name === "その他" ||
+        names.has(name)
+      ) {
+        throw new Error(
+          "職種名を確認してください。" +
+          "空欄・重複・「その他」という名前は使用できません。"
+        );
+      }
+
+      names.add(name);
+
+      const ratesContainer = row.querySelector(
+        '[data-rates-container]'
+      );
+
+      const rates = Array.from(ratesContainer.children).map(
+        function (rateRow) {
+          return {
+            name: rateRow.querySelector(
+              '[data-field="rateName"]'
+            ).value.trim(),
+
+            amount: Number(rateRow.querySelector(
+              '[data-field="rateAmount"]'
+            ).value),
+
+            start: rateRow.querySelector(
+              '[data-field="rateStart"]'
+            ).value,
+
+            end: rateRow.querySelector(
+              '[data-field="rateEnd"]'
+            ).value
+          };
+        }
+      );
+
+      try {
+        validateRates(rates);
+      } catch (error) {
+        throw new Error(name + "：" + error.message);
+      }
+
+      nextJobs.push({
+        id: row.dataset.jobId,
+        name: name,
+        rates: rates
+      });
+    }
+
+    localStorage.setItem(JOBS_KEY, JSON.stringify(nextJobs));
+
+    jobs = nextJobs;
+    updateJobOptions();
+    settingsMessage.textContent = "設定を保存しました。";
+  } catch (error) {
+    console.error(error);
+    settingsMessage.textContent =
+      "保存できませんでした：" + error.message;
+  }
+});
+
+// ===== 職種選択 =====
+
+function updateJobOptions() {
+  const previous = incomeSource.value;
+  incomeSource.textContent = "";
+
+  jobs.forEach(function (job) {
+    const option = document.createElement("option");
+    option.value = job.id;
+    option.textContent = job.name;
+    incomeSource.appendChild(option);
+  });
+
+  const other = document.createElement("option");
+  other.value = "other";
+  other.textContent = "その他";
+  incomeSource.appendChild(other);
+
+  if (
+    previous === "other" ||
+    jobs.some(function (job) {
+      return job.id === previous;
+    })
+  ) {
+    incomeSource.value = previous;
+  }
+
+  updateIncomeFields();
+}
+
+function updateBreakFields() {
+  const isWork = incomeSource.value !== "other";
+  const hasBreak = Number(breakMinutes.value) > 0;
+
+  breakStartFields.hidden = !isWork || !hasBreak;
+  breakStart.disabled = !isWork || !hasBreak;
+  breakStart.required = isWork && hasBreak;
+}
+
+function updateIncomeFields() {
+  const isWork = incomeSource.value !== "other";
+
+  workFields.hidden = !isWork;
+
+  [startTime, endTime, breakMinutes].forEach(function (input) {
+    input.disabled = !isWork;
+    input.required = isWork;
+  });
+
+  incomeAmount.readOnly = isWork;
+  incomeAmount.placeholder = isWork
+    ? "自動計算されます"
+    : "例：5000";
+
+  incomeAmount.value = "";
+  workPreview.textContent = "";
+
+  updateBreakFields();
+
+  if (isWork) {
+    calculateIncome();
+  }
+}
+
+// ===== 収入計算 =====
+
+function getWorkCalculation() {
+  const job = jobs.find(function (entry) {
+    return entry.id === incomeSource.value;
+  });
+
+  if (!job) {
+    throw new Error("職種を選択してください。");
+  }
+
+  try {
+    validateRates(job.rates);
+  } catch (error) {
+    throw new Error("収入設定を確認してください：" + error.message);
+  }
+
+  const start = timeToMinutes(startTime.value);
+  let end = timeToMinutes(endTime.value);
+
+  if (start === null || end === null) {
+    throw new Error("出勤時間と退勤時間を入力してください。");
+  }
+
+  if (start === end) {
+    throw new Error("出勤と退勤を異なる時刻にしてください。");
+  }
+
+  if (end < start) {
+    end += 1440;
+  }
+
+  const rest = Number(breakMinutes.value);
+
+  if (
+    breakMinutes.value === "" ||
+    !Number.isInteger(rest) ||
+    rest < 0 ||
+    rest >= end - start
+  ) {
+    throw new Error(
+      "休憩時間は勤務の長さ未満の、0以上の整数分にしてください。"
+    );
+  }
+
+  let restStart = null;
+
+  if (rest > 0) {
+    restStart = timeToMinutes(breakStart.value);
+
+    if (restStart === null) {
+      throw new Error("休憩開始時刻を入力してください。");
+    }
+
+    if (restStart < start) {
+      restStart += 1440;
+    }
+
+    if (restStart + rest > end) {
+      throw new Error("休憩が勤務時間内に収まるようにしてください。");
+    }
+  }
+
+  const details = job.rates.map(function (rate) {
+    return {
+      name: rate.name,
+      rate: rate.amount,
+      minutes: 0
+    };
+  });
+
+  // 勤務の各分について、適用する時給を調べる
+  for (let minute = start; minute < end; minute++) {
+    if (
+      rest > 0 &&
+      minute >= restStart &&
+      minute < restStart + rest
+    ) {
+      continue;
+    }
+
+    const index = job.rates.findIndex(function (rate) {
+      return isInRate(minute % 1440, rate);
+    });
+
+    details[index].minutes++;
+  }
+
+  let numerator = 0;
+
+  details.forEach(function (detail) {
+    numerator += detail.rate * detail.minutes;
+  });
+
+  if (!Number.isSafeInteger(numerator)) {
+    throw new Error("計算可能な金額の範囲を超えています。");
+  }
+
+  // 全項目の合計に対して、1円未満を切り捨てる
+  const amount = Math.floor(numerator / 60);
+
+  if (!isPositiveInteger(amount)) {
+    throw new Error("収入が1円以上になるように入力してください。");
+  }
+
+  return {
+    job: job,
+    amount: amount,
+    rateDetails: details.filter(function (detail) {
+      return detail.minutes > 0;
+    }),
+    breakMinutes: rest,
+    nextDay: end >= 1440
+  };
+}
+
+function calculateIncome() {
+  if (incomeSource.value === "other") {
+    return;
+  }
+
+  incomeAmount.value = "";
+
+  try {
+    const result = getWorkCalculation();
+
+    incomeAmount.value = result.amount;
+
+    workPreview.textContent =
+      result.rateDetails.map(function (detail) {
+        return detail.name + " " +
+          formatMinutes(detail.minutes) +
+          "（時給 " + formatYen(detail.rate) + "）";
+      }).join(" ／ ") +
+      " → " + formatYen(result.amount);
+  } catch (error) {
+    workPreview.textContent = error.message;
+  }
+}
+
+[startTime, endTime, breakMinutes, breakStart].forEach(
+  function (input) {
+    input.addEventListener("input", function () {
+      updateBreakFields();
+      calculateIncome();
+    });
+  }
+);
+
+incomeSource.addEventListener("change", updateIncomeFields);
+
+// ===== 保存・表示 =====
+
+function saveIncomes() {
+  if (!incomesReadable) {
+    alert("読み込みに失敗しているため、収入の変更は保存されません。");
+    return;
+  }
+
+  try {
+    localStorage.setItem(INCOME_KEY, JSON.stringify(incomes));
+  } catch (error) {
+    console.error(error);
+    alert("収入を保存できませんでした。今回の変更は画面上だけに反映されています。");
+  }
+}
+
+function renderIncomes() {
+  incomeList.textContent = "";
+
+  const selectedMonth = incomeMonthFilter.value;
+  let total = 0;
+  let count = 0;
+
+  incomes.forEach(function (income, index) {
+    if (
+      selectedMonth !== "" &&
+      income.date.slice(0, 7) !== selectedMonth
+    ) {
+      return;
+    }
+
+    count++;
+    total += income.amount;
+
+    const row = document.createElement("li");
+    const text = document.createElement("div");
+    text.className = "record-text";
+
+    text.appendChild(createMeta(income.date));
+
+    const detail = document.createElement("span");
+    detail.textContent =
+      income.source + "：" + formatYen(income.amount);
+
+    text.appendChild(detail);
+
+    if (income.startTime && income.endTime) {
+      text.appendChild(createMeta(
+        income.startTime + "～" +
+        (income.nextDay ? "翌日 " : "") +
+        income.endTime +
+        " ／ 休憩 " + income.breakMinutes + "分"
+      ));
+    }
+
+    if (Array.isArray(income.rateDetails)) {
+      income.rateDetails.forEach(function (rateDetail) {
+        text.appendChild(createMeta(
+          rateDetail.name + "：" +
+          formatMinutes(rateDetail.minutes) +
+          " ／ 時給 " + formatYen(rateDetail.rate)
+        ));
+      });
+    } else if (
+      Number.isInteger(income.normalMinutes) &&
+      Number.isInteger(income.nightMinutes) &&
+      isPositiveInteger(income.hourlyRate) &&
+      isPositiveInteger(income.nightRate)
+    ) {
+      // 以前の通常・深夜形式の記録
+      text.appendChild(createMeta(
+        "通常 " + formatMinutes(income.normalMinutes) +
+        " ／ 時給 " + formatYen(income.hourlyRate)
+      ));
+
+      text.appendChild(createMeta(
+        "深夜 " + formatMinutes(income.nightMinutes) +
+        " ／ 時給 " + formatYen(income.nightRate)
+      ));
+    } else if (
+      isPositiveInteger(income.hourlyRate) &&
+      Number.isFinite(income.workHours)
+    ) {
+      // さらに以前の労働時間入力形式の記録
+      text.appendChild(createMeta(
+        "時給 " + formatYen(income.hourlyRate) +
+        " × " + income.workHours + "時間"
+      ));
+    }
+
+    row.appendChild(text);
+
+    row.appendChild(createDeleteButton(function () {
+      incomes.splice(index, 1);
+      saveIncomes();
+      renderIncomes();
+    }));
+
+    incomeList.appendChild(row);
+  });
+
+  incomeTotal.textContent = total.toLocaleString("ja-JP");
+
+  incomeSummaryTitle.textContent = selectedMonth
+    ? monthLabel(selectedMonth) + "の収入"
+    : "全期間の収入";
+
+  incomeEmptyMessage.textContent = count === 0
+    ? "表示する収入がありません。"
+    : "";
+}
+
+incomeForm.addEventListener("submit", function (event) {
+  event.preventDefault();
+
+  if (!isValidDate(incomeDate.value)) {
+    alert("日付を入力してください。");
+    return;
+  }
+
+  let income;
+
+  if (incomeSource.value === "other") {
+    const amount = Number(incomeAmount.value);
+
+    if (!isPositiveInteger(amount)) {
+      alert("1円以上の整数金額を入力してください。");
+      return;
+    }
+
+    income = {
+      source: "その他",
+      date: incomeDate.value,
+      amount: amount
+    };
+  } else {
+    try {
+      const result = getWorkCalculation();
+
+      income = {
+        jobId: result.job.id,
+        source: result.job.name,
+        date: incomeDate.value,
+        amount: result.amount,
+        startTime: startTime.value,
+        endTime: endTime.value,
+        breakStart: result.breakMinutes > 0
+          ? breakStart.value
+          : "",
+        breakMinutes: result.breakMinutes,
+        nextDay: result.nextDay,
+        rateDetails: result.rateDetails
+      };
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
+  }
+
+  incomes.push(income);
+  saveIncomes();
+
+  if (incomeMonthFilter.value !== "") {
+    incomeMonthFilter.value = incomeDate.value.slice(0, 7);
+  }
+
+  renderIncomes();
+
+  startTime.value = "";
+  endTime.value = "";
+  breakMinutes.value = "0";
+  breakStart.value = "";
+  incomeAmount.value = "";
+
+  updateBreakFields();
+  workPreview.textContent = "";
+});
+
+incomeMonthFilter.addEventListener("change", renderIncomes);
+
+getElement("showAllIncomes").addEventListener("click", function () {
+  incomeMonthFilter.value = "";
+  renderIncomes();
+});
+
+// ===== ページの切り替え =====
+
+const pages = [
+  {
+    hash: "#expenses",
+    page: getElement("expensePage"),
+    link: getElement("expensePageLink"),
+    title: "支出管理"
+  },
+  {
+    hash: "#incomes",
+    page: getElement("incomePage"),
+    link: getElement("incomePageLink"),
+    title: "収入管理"
+  },
+  {
+    hash: "#settings",
+    page: getElement("settingsPage"),
+    link: getElement("settingsPageLink"),
+    title: "収入設定"
+  }
+];
+
+function showCurrentPage() {
+  const selected = pages.find(function (page) {
+    return page.hash === window.location.hash;
+  }) || pages[0];
+
+  pages.forEach(function (page) {
+    const active = page === selected;
+    page.page.hidden = !active;
+
+    if (active) {
+      page.link.setAttribute("aria-current", "page");
+    } else {
+      page.link.removeAttribute("aria-current");
+    }
+  });
+
+  document.title = selected.title;
+}
+
+window.addEventListener("hashchange", showCurrentPage);
+
+// ===== 初期表示 =====
+
+renderJobSettings();
+updateJobOptions();
+updateExpenseFields();
+renderExpenses();
+renderIncomes();
+showCurrentPage();
+  </script>
+</body>
+</html>
